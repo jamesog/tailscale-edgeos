@@ -2,54 +2,59 @@
 
 This is a short guide for getting [Tailscale](https://tailscale.com/) running on the Ubiquiti EdgeRouter platform. EdgeOS 2.0+ is required to make use of the systemd unit file shipped by Tailscale.
 
-This is based on [lg](https://github.com/lg)'s [gist](https://gist.github.com/lg/6f80593bd55ca9c9cf886da169a972c3), although the `firstboot` here script is a modified version of [joeshaw](https://github.com/joeshaw)'s [suggestion](https://gist.github.com/lg/6f80593bd55ca9c9cf886da169a972c3#gistcomment-3578594) of putting everything under `/config/tailscale` rather than directly in `/config`.
+This is inspired by [lg](https://github.com/lg)'s [gist](https://gist.github.com/lg/6f80593bd55ca9c9cf886da169a972c3) and [joeshaw](https://github.com/joeshaw)'s [suggestion](https://gist.github.com/lg/6f80593bd55ca9c9cf886da169a972c3#gistcomment-3578594) of putting everything under `/config/tailscale` rather than directly in `/config`, however this guide uses Tailscale's Debian package repository instead of downloading the tarball and manually managing the files.
 
-## Setup
 
-1. Enter a root shell
+## Caveats & Known Issues
+
+* [#1](../../issues/1): Tailscale does not work correctly at boot ([tailscale/tailscale#1724](../../../../tailscale/tailscale/issues/1724))
+  * Resolved by restarting the `tailscaled` service (`sudo systemctl restart tailscaled`)
+
+## Installing Tailscale
+
+1. Configure the Tailscale apt repository
+
+    ```
+    configure
+    set system package repository tailscale url https://pkgs.tailscale.com/stable/debian
+    set system package repository tailscale distribution stretch
+    set system package repository tailscale components main
+    commit comment "Add Tailscale repository"
+    save; exit
+    ```
+
+2. Create required directories and download and run firstboot script
+
+    Scripts in the `firstboot.d` directory are run after firmware upgrades.
+    This script ensures that the Tailscale daemon's state is symlinked to
+    `/config` so it persists across firmware upgrades (otherwise you'll have to
+    set up as a new device on every upgrade) and installs a `post-config.d`
+    script to ensure Tailscale is installed after each boot.
+
+    The `post-config.d` script also copies the Debian package to
+    `/config/data/firstboot/install-packages` so the package can be installed
+    during `firstboot` after a firmware upgrade to ensure the package gets
+    installed and doesn't require downloading it again. This also means the
+    same version will be consistently installed.
 
     ```sh
     sudo bash
+    mkdir -p /config/scripts/firstboot.d /config/tailscale/tailscaled.service.d
+    curl -o /config/scripts/firstboot.d/tailscale.sh https://raw.githubusercontent.com/jamesog/tailscale-edgeos/main/firstboot.d/tailscale.sh
+    chmod 755 /config/scripts/firstboot.d/tailscale.sh
+    /config/scripts/firstboot.d/tailscale.sh
+    /config/scripts/post-config.d/tailscale.sh
     ```
 
-2. Create the required directories
-
-    ```sh
-    mkdir -p /config/firstboot.d /config/tailscale /config/tailscale/tailscaled.service.d
-    ```
-
-3. Fetch the `firstboot` script
-
-    ```sh
-    curl -o /config/firstboot.d/tailscale.sh https://raw.githubusercontent.com/jamesog/tailscale-edgeos/main/firstboot.d/tailscale.sh
-    chmod 755 /config/firstboot.d/tailscale.sh
-    ```
-
-4. Download the latest MIPS release from https://pkgs.tailscale.com/stable/#static
-
-    Different EdgeRouter models use either MIPS or MIPS-LE, so make sure you download the right tarball for your platform. <br>
-    ER-4 is MIPS, ER-X is MIPSLE.
-
-    ```sh
-    curl https://pkgs.tailscale.com/stable/tailscale_X.Y.Z_mips.tgz | tar -zxvf - -C /tmp
-    ```
-
-6. Copy the extracted files to `/config/tailscale`
-
-    ```sh
-    cp -rv /tmp/tailscale_*/* /config/tailscale
-    ```
-
-7. Run the firstboot script and log in to Tailscale
+3. Log in to Tailscale
 
     The example below enables subnet routing for one subnet, enables use as an exit node (Tailscale 1.6+), and uses a one-off pre-auth key, which can be generated at https://login.tailscale.com/admin/authkeys
 
     ```sh
-    /config/firstboot.d/tailscale.sh
     tailscale up --advertise-routes 192.0.2.0/24 --advertise-exit-node --authkey tskey-XXX
     ```
 
-8. (Optional) If you want `sshd` to explicitly listen on the Tailscale address instead of all addresses:
+4. (Optional) If you want `sshd` to explicitly listen on the Tailscale address instead of all addresses:
 
     1. Fetch the override unit
 
@@ -71,3 +76,65 @@ This is based on [lg](https://github.com/lg)'s [gist](https://gist.github.com/lg
         commit comment "sshd listen on Tailscale IP"
         ```
 
+
+## Firmware Upgrades
+
+After an EdgeOS upgrade third-party packages are no longer installed, but the
+`firstboot` script described above ensures Tailscale gets reinstalled.
+
+Note that it will install the Tailscale version from the first time the
+`post-config.d` script ran. If you had upgraded Tailscale since you will need
+to re-upgrade it.
+
+## Upgrading Tailscale
+
+Upgrading is straightforward as the package manager will do everything for you.
+
+**Note:** DO NOT USE `apt-get upgrade`. This is not supported on EdgeOS and may
+result in a broken system.
+
+```
+sudo apt-get update
+sudo apt-get install tailscale
+```
+
+If you want to install a specific version of Tailscale use:
+
+```
+sudo apt-get install tailscale=X.Y.Z
+```
+
+Where `X.Y.Z` is the version you want. This also works for downgrading.
+
+If you consider this version to be "stable" for your use-cases you should think
+about copying the package to flash memory so it survives firmware upgrades,
+otherwise an older version may get installed.
+
+First check if old packages are saved:
+
+```
+sudo bash
+ls -l /config/data/firstboot/install-packages
+```
+
+If old versions exist delete them, e.g.
+
+```
+rm /config/data/firstboot/install-packages/tailscale_1.6.0_mips.deb
+```
+
+Then copy the latest version:
+
+```
+cp /var/cache/apt/archives/tailscale_*.deb /config/data/firstboot/install-packages
+```
+
+## Uninstalling
+
+```
+sudo apt-get purge tailscale
+configure
+delete system package repository tailscale
+commit comment "Remove Tailscale repository"
+save; exit
+```
