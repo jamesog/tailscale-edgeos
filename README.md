@@ -2,13 +2,7 @@
 
 This is a short guide for getting [Tailscale](https://tailscale.com/) running on the Ubiquiti EdgeRouter platform. EdgeOS 2.0+ is required to make use of the systemd unit file shipped by Tailscale.
 
-This is inspired by [lg](https://github.com/lg)'s [gist](https://gist.github.com/lg/6f80593bd55ca9c9cf886da169a972c3) and [joeshaw](https://github.com/joeshaw)'s [suggestion](https://gist.github.com/lg/6f80593bd55ca9c9cf886da169a972c3#gistcomment-3578594) of putting everything under `/config/tailscale` rather than directly in `/config`, however this guide uses Tailscale's Debian package repository instead of downloading the tarball and manually managing the files.
-
-
-## Caveats & Known Issues
-
-* [#1](../../issues/1): Tailscale does not work correctly at boot ([tailscale/tailscale#1724](../../../../tailscale/tailscale/issues/1724))
-  * Resolved by restarting the `tailscaled` service (`sudo systemctl restart tailscaled`)
+This was originally inspired by [lg](https://github.com/lg)'s [gist](https://gist.github.com/lg/6f80593bd55ca9c9cf886da169a972c3) and [joeshaw](https://github.com/joeshaw)'s [suggestion](https://gist.github.com/lg/6f80593bd55ca9c9cf886da169a972c3#gistcomment-3578594) of putting everything under `/config/tailscale` rather than directly in `/config`, however this guide uses Tailscale's Debian package repository instead of downloading the tarball and manually managing the files.
 
 ## Installing Tailscale
 
@@ -16,7 +10,7 @@ This is inspired by [lg](https://github.com/lg)'s [gist](https://gist.github.com
 
     ```
     configure
-    set system package repository tailscale url https://pkgs.tailscale.com/stable/debian
+    set system package repository tailscale url '[signed-by=/usr/share/keyrings/tailscale-stretch-stable.gpg] https://pkgs.tailscale.com/stable/debian'
     set system package repository tailscale distribution stretch
     set system package repository tailscale components main
     commit comment "Add Tailscale repository"
@@ -39,7 +33,7 @@ This is inspired by [lg](https://github.com/lg)'s [gist](https://gist.github.com
 
     ```sh
     sudo bash
-    mkdir -p /config/scripts/firstboot.d /config/tailscale/tailscaled.service.d
+    mkdir -p /config/scripts/firstboot.d
     curl -o /config/scripts/firstboot.d/tailscale.sh https://raw.githubusercontent.com/jamesog/tailscale-edgeos/main/firstboot.d/tailscale.sh
     chmod 755 /config/scripts/firstboot.d/tailscale.sh
     /config/scripts/firstboot.d/tailscale.sh
@@ -59,7 +53,7 @@ This is inspired by [lg](https://github.com/lg)'s [gist](https://gist.github.com
     1. Fetch the override unit
 
         ```sh
-        curl -o /config/tailscale/tailscaled.service.d/before-ssh.conf https://raw.githubusercontent.com/jamesog/tailscale-edgeos/main/tailscaled.service.d/before-ssh.conf
+        curl -o /config/tailscale/systemd/tailscaled.service.d/before-ssh.conf https://raw.githubusercontent.com/jamesog/tailscale-edgeos/main/tailscaled.service.d/before-ssh.conf
         systemctl daemon-reload
         ```
 
@@ -67,7 +61,7 @@ This is inspired by [lg](https://github.com/lg)'s [gist](https://gist.github.com
 
         If you don't currently have any listen-address directives, make sure you add any other addresses you want to access the router by, such as a private network IP.
 
-        N.B. the Tailscale IP can be found in the admin console, or using `tailscale status -peers=false | awk '{print $1}'`
+        The Tailscale IP can be found in the admin console, or using `tailscale ip`.
 
         ```
         exit
