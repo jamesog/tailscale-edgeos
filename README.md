@@ -44,7 +44,7 @@ This was originally inspired by [lg](https://github.com/lg)'s [gist](https://gis
 
     The example below enables subnet routing for one subnet, enables use as an exit node (Tailscale 1.6+), and uses a one-off pre-auth key, which can be generated at https://login.tailscale.com/admin/authkeys
 
-    !! Remember to change `192.0.2.0/24` with the subnet(s) you *actually want to expose* to the tailnet.
+    :warning: Remember to change `192.0.2.0/24` with the subnet(s) you *actually want to expose* to the tailnet.
 
     ```sh
     tailscale up --advertise-routes 192.0.2.0/24 --advertise-exit-node --authkey tskey-XXX
