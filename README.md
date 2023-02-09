@@ -44,6 +44,8 @@ This was originally inspired by [lg](https://github.com/lg)'s [gist](https://gis
 
     The example below enables subnet routing for one subnet, enables use as an exit node (Tailscale 1.6+), and uses a one-off pre-auth key, which can be generated at https://login.tailscale.com/admin/authkeys
 
+    :warning: Remember to change `192.0.2.0/24` with the subnet(s) you *actually want to expose* to the tailnet.
+
     ```sh
     tailscale up --advertise-routes 192.0.2.0/24 --advertise-exit-node --authkey tskey-XXX
     ```
@@ -53,7 +55,7 @@ This was originally inspired by [lg](https://github.com/lg)'s [gist](https://gis
     1. Fetch the override unit
 
         ```sh
-        curl -o /config/tailscale/systemd/tailscaled.service.d/before-ssh.conf https://raw.githubusercontent.com/jamesog/tailscale-edgeos/main/tailscaled.service.d/before-ssh.conf
+        curl -o /config/tailscale/systemd/tailscaled.service.d/before-ssh.conf https://raw.githubusercontent.com/jamesog/tailscale-edgeos/main/systemd/tailscaled.service.d/before-ssh.conf
         systemctl daemon-reload
         ```
 
@@ -127,6 +129,7 @@ cp /var/cache/apt/archives/tailscale_*.deb /config/data/firstboot/install-packag
 
 ```
 sudo apt-get purge tailscale
+sudo rm /config/scripts/firstboot.d/tailscale.sh /config/scripts/post-config.d/tailscale.sh
 configure
 delete system package repository tailscale
 commit comment "Remove Tailscale repository"
