@@ -50,6 +50,7 @@ if [ ! -x /config/scripts/post-config.d/tailscale.sh ]; then
 set -e
 
 reload=""
+apt_index_updated=""
 
 # The mount unit needs to be copied rather than linked.
 # systemd errors with "Link has been severed" if the unit is a symlink.
@@ -69,14 +70,17 @@ if [ -n "$reload" ]; then
 	systemctl daemon-reload
 fi
 
-KEYRING=/usr/share/keyrings/tailscale-stretch-stable.gpg
+KEYRING=/usr/share/keyrings/tailscale-archive-keyring.gpg
 
 if ! gpg --list-keys --with-colons --keyring $KEYRING 2>/dev/null | grep -qF info@tailscale.com; then
 	echo Installing Tailscale repository signing key
-	if [ ! -e /config/tailscale/stretch.gpg ]; then
-		curl -fsSL https://pkgs.tailscale.com/stable/debian/stretch.asc | gpg --dearmor > /config/tailscale/stretch.gpg
+	apt-get update --allow-unauthenticated
+	apt_index_updated=y
+	apt-get install --allow-unauthenticated tailscale-archive-keyring
+	if [ -e /config/tailscale/stretch.gpg ]; then
+		# Clean up pre tailscale-archive-keyring data
+		rm /config/tailscale/stretch.gpg
 	fi
-	cp /config/tailscale/stretch.gpg $KEYRING
 fi
 
 pkg_status=$(dpkg-query -Wf '${Status}' tailscale 2>/dev/null || true)
@@ -88,7 +92,7 @@ if ! echo $pkg_status| grep -qF "install ok installed"; then
 		systemd-run --no-block dpkg --configure -a
 	else
 		echo "Installing Tailscale"
-		apt-get update
+		[[ -z "$apt_index_updated" ]] && apt-get update
 		apt-get install tailscale
 		mkdir -p /config/data/firstboot/install-packages
 		cp /var/cache/apt/archives/tailscale_*.deb /config/data/firstboot/install-packages

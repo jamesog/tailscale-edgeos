@@ -8,9 +8,13 @@ This was originally inspired by [lg](https://github.com/lg)'s [gist](https://gis
 
 1. Configure the Tailscale apt repository
 
+    > **Info**  
+    > Prior to Tailscale 1.40.1 the below `signed-by` path was `/usr/share/keyrings/tailscale-stretch-stable.gpg`.
+    > Ensure you update this after upgrading beyond 1.40.1.
+
     ```
     configure
-    set system package repository tailscale url '[signed-by=/usr/share/keyrings/tailscale-stretch-stable.gpg] https://pkgs.tailscale.com/stable/debian'
+    set system package repository tailscale url '[signed-by=/usr/share/keyrings/tailscale-archive-keyring.gpg] https://pkgs.tailscale.com/stable/debian'
     set system package repository tailscale distribution stretch
     set system package repository tailscale components main
     commit comment "Add Tailscale repository"
@@ -42,9 +46,13 @@ This was originally inspired by [lg](https://github.com/lg)'s [gist](https://gis
 
 3. Log in to Tailscale
 
-    The example below enables subnet routing for one subnet, enables use as an exit node (Tailscale 1.6+), and uses a one-off pre-auth key, which can be generated at https://login.tailscale.com/admin/authkeys
+    The example below enables subnet routing for one subnet, enables use as an
+    exit node (Tailscale 1.6+), and uses a one-off pre-auth key, which can be
+    generated at https://login.tailscale.com/admin/authkeys
 
-    :warning: Remember to change `192.0.2.0/24` with the subnet(s) you *actually want to expose* to the tailnet.
+    > **Info**  
+    > Refer to Tailscale's [CLI docs](https://tailscale.com/kb/1241/tailscale-up/)
+    > to configure the flags for your own use-case.
 
     ```sh
     tailscale up --advertise-routes 192.0.2.0/24 --advertise-exit-node --authkey tskey-XXX
@@ -79,15 +87,36 @@ After an EdgeOS upgrade third-party packages are no longer installed, but the
 `firstboot` script described above ensures Tailscale gets reinstalled.
 
 Note that it will install the Tailscale version from the first time the
-`post-config.d` script ran. If you had upgraded Tailscale since you will need
-to re-upgrade it.
+`post-config.d` script ran unless you replace the saved package. See below for
+instructions on upgrading and persisting the version.
 
 ## Upgrading Tailscale
+
+> **Note**  
+> If upgrading from a version before 1.40.1 a new package,
+> `tailscale-archive-keyring`, will be installed.
+
+> **Warning**  
+> When first upgrading to 1.40.1 please **delete** the `post-config.d` script
+> and re-run the `firstboot.d` script to regenerate the `post-config.d` script.
+>
+> ```
+> sudo rm /config/scripts/post-config.d/tailscale.sh
+> sudo /config/scripts/firstboot.d/tailscale.sh
+> ```
 
 Upgrading is straightforward as the package manager will do everything for you.
 
 **Note:** DO NOT USE `apt-get upgrade`. This is not supported on EdgeOS and may
 result in a broken system.
+
+First, clean the package cache. This will make a later step easier.
+
+```
+sudo apt-get clean
+```
+
+Then update the package index and install the latest version of Tailscale.
 
 ```
 sudo apt-get update
@@ -122,8 +151,11 @@ rm /config/data/firstboot/install-packages/tailscale_1.6.0_mips.deb
 Then copy the latest version:
 
 ```
-cp /var/cache/apt/archives/tailscale_*.deb /config/data/firstboot/install-packages
+cp /var/cache/apt/archives/tailscale*.deb /config/data/firstboot/install-packages
 ```
+
+If you didn't run `apt-get clean` before this step you might copy old versions
+to the flash disk too.
 
 ## Uninstalling
 
