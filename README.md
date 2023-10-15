@@ -131,7 +131,7 @@ If you still receive an **out of space** error when upgrading, try cleaning the 
 delete system image
 ```
 
-If you have a **certificate error** when upgrading, unfortunately it is a [Unifi problem](https://community.ui.com/questions/Fix-Solution-Lets-Encrypt-DST-Root-CA-X3-Expiration-Problems-with-IDS-IPS-Signature-Updates-HTTPS-E/0404a626-1a77-4d6c-9b4c-17ea3dea641d), but to correct it manually you can use
+If you have a **certificate error** when upgrading, unfortunately it is an [EdgeOS problem](https://community.ui.com/questions/Fix-Solution-Lets-Encrypt-DST-Root-CA-X3-Expiration-Problems-with-IDS-IPS-Signature-Updates-HTTPS-E/0404a626-1a77-4d6c-9b4c-17ea3dea641d), but to correct it manually you can run the following commands:
 
 ```
 sudo -i
