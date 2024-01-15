@@ -3,6 +3,7 @@
 set -e
 
 sed -i 's|^mozilla\/DST_Root_CA_X3\.crt|!mozilla/DST_Root_CA_X3.crt|' /etc/ca-certificates.conf
+mkdir -p /usr/local/share/ca-certificates/
 curl -sk https://letsencrypt.org/certs/isrgrootx1.pem -o /usr/local/share/ca-certificates/ISRG_Root_X1.crt
 update-ca-certificates --fresh
 
